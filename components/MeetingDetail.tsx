@@ -48,10 +48,12 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
   }
 
   async function copyLink(label: string, hash = "") {
+    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+    const path = `${base}/meetings/${meeting.id}/${hash}`;
     const url =
       typeof window !== "undefined"
-        ? `${window.location.origin}/meetings/${meeting.id}${hash}`
-        : `/meetings/${meeting.id}${hash}`;
+        ? `${window.location.origin}${path}`
+        : path;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(label);
