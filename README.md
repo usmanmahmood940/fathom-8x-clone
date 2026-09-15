@@ -1,0 +1,76 @@
+# Fathom 8× Clone — AI Meeting Notetaker (Demo)
+
+Polished **public demo** of a [Fathom](https://fathom.video/)-inspired meeting notetaker. Cinematic black UI, cyan/yellow accents, seeded meetings with transcripts, AI summaries, action items, comments, and shareable highlight clips.
+
+**No login required** for reviewers.
+
+## Quick start
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+```bash
+npm run build
+npm start
+```
+
+## Stack
+
+- Next.js App Router + TypeScript
+- Tailwind CSS v4
+- Static seed data in `lib/data.ts` (Vercel-friendly; no database)
+
+## Routes
+
+| Route | Description |
+|-------|-------------|
+| `/` | Meetings list — search, date filters, tags, avatars, durations |
+| `/meetings/[id]` | Meeting detail — player stub, timeline, tabs |
+
+### Meeting detail tabs
+
+**Summary** · **Action Items** · **Comments** · **Transcript** · **Related**
+
+Summary sections mirror Fathom-style labels (Meeting Purpose, Topics, Goals, Current Challenges, etc.) plus Enhanced Summary and inline action items with owners.
+
+## Seed data
+
+**6 meetings** with real-looking content:
+
+1. Weekly Product Sync  
+2. Customer Call — Acme Corp Onboarding  
+3. Engineering Standup  
+4. Design Critique — Meeting Detail  
+5. Sales Pipeline Review  
+6. Security Review — Data Retention  
+
+Each includes participants, multi-speaker transcript with timestamps, structured AI summary, checkable action items, comments, and highlights.
+
+## What was stubbed
+
+- **Recording bot / capture** — not connected to Zoom/Meet/Teams; capture mode is display-only (`Transcript-only`, `Audio + transcript`, `Full audio + video`).
+- **Video player** — visual placeholder with play/pause and seek; no real media file.
+- **Ask Fathom** — UI entry point only; no LLM backend.
+- **Comments composer** — seeded comments render; posting new comments is stubbed.
+- **Export / CRM sync / integrations** — buttons copy links or are non-functional stubs.
+- **Auth** — intentionally omitted so the demo is public.
+
+Clip “Share” copies a timestamped URL to the clipboard (no video transcoding).
+
+## Deploy (Vercel)
+
+1. Push this repo to GitHub.
+2. Import in Vercel → framework preset **Next.js**.
+3. Build command: `npm run build` · Output: default `.next`.
+4. No env vars required for the demo.
+
+Optional static export is not required; SSR/SSG via App Router works on Vercel as-is. Meeting pages use `generateStaticParams` for the six seeded IDs.
+
+## Project notes
+
+- Keep `CAPTURE-TEST.md`, `.agent-logs/`, and `.cursor/hooks` intact (assignment capture harness).
+- Visual system follows recon in `recon/PRODUCT_MAP.md`: `#000` / `#1B1B1B`, cyan `#08BDF2`, yellow `#FFF06A`.
