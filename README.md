@@ -61,14 +61,29 @@ Each includes participants, multi-speaker transcript with timestamps, structured
 
 Clip “Share” copies a timestamped URL to the clipboard (no video transcoding).
 
-## Deploy (Vercel)
+## Deploy (GitHub Pages + Vercel)
 
-1. Push this repo to GitHub.
-2. Import in Vercel → framework preset **Next.js**.
-3. Build command: `npm run build` · Output: default `.next`.
-4. No env vars required for the demo.
+Static export (`output: "export"`). No env vars required for the demo.
 
-Optional static export is not required; SSR/SSG via App Router works on Vercel as-is. Meeting pages use `generateStaticParams` for the six seeded IDs.
+**GitHub Pages** (project site):
+
+```bash
+npm run build:pages
+```
+
+`public/.nojekyll` is copied into `out/` so GitHub’s Jekyll does not hide `_next/`. Live: [usmanmahmood940.github.io/fathom-8x-clone](https://usmanmahmood940.github.io/fathom-8x-clone/).
+
+**Vercel** (empty `basePath`):
+
+```bash
+npm run build
+```
+
+Import the GitHub repo in Vercel, or `npx vercel --prod`. Framework: Next.js. Build: `npm run build`. Output: `out`.
+
+## Walkthrough
+
+Camera-on script: [WALKTHROUGH.md](WALKTHROUGH.md).
 
 ## Project notes
 
