@@ -918,3 +918,23 @@ export function getMeeting(id: string): Meeting | undefined {
 export function getParticipant(meeting: Meeting, participantId: string) {
   return meeting.participants.find((p) => p.id === participantId);
 }
+
+export function getRelatedMeetings(meeting: Meeting): Meeting[] {
+  const ids = new Set(meeting.participants.map((p) => p.id));
+  return meetings.filter(
+    (m) =>
+      m.id !== meeting.id && m.participants.some((p) => ids.has(p.id)),
+  );
+}
+
+export function allPeople(list: Meeting[] = meetings) {
+  const map = new Map<string, { id: string; name: string; color: string }>();
+  for (const m of list) {
+    for (const p of m.participants) {
+      if (!map.has(p.id)) {
+        map.set(p.id, { id: p.id, name: p.name, color: p.avatarColor });
+      }
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+}

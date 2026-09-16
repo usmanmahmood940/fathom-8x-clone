@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { Meeting, MeetingTab } from "@/lib/types";
+import type { Comment, Highlight, Meeting, MeetingTab } from "@/lib/types";
 import { Avatar, AvatarStack } from "./Avatar";
+import { AskFathom } from "./AskFathom";
+import { ShareSheet } from "./ShareSheet";
 import {
   cn,
   formatDuration,
@@ -13,7 +15,8 @@ import {
   parseClipQuery,
   withBasePath,
 } from "@/lib/utils";
-import { getParticipant } from "@/lib/data";
+import { getParticipant, getRelatedMeetings } from "@/lib/data";
+import { formatSummaryMarkdown } from "@/lib/export";
 
 const TABS: { id: MeetingTab; label: string }[] = [
   { id: "summary", label: "Summary" },
@@ -52,9 +55,20 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
   const [currentMs, setCurrentMs] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [actions, setActions] = useState(meeting.actionItems);
+  const [highlights, setHighlights] = useState(meeting.highlights);
+  const [comments, setComments] = useState(meeting.comments);
   const [copied, setCopied] = useState<string | null>(null);
   const [templateIndex, setTemplateIndex] = useState(0);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+  const [shareTitle, setShareTitle] = useState(meeting.title);
+  const [rangeStart, setRangeStart] = useState<string | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<string | null>(null);
+  const [hlTitle, setHlTitle] = useState("");
+  const [hlNote, setHlNote] = useState("");
+  const [draft, setDraft] = useState("");
 
+  const related = useMemo(() => getRelatedMeetings(meeting), [meeting]);
   const progress = Math.min(100, (currentMs / meeting.durationMs) * 100);
   const template = TEMPLATES[templateIndex] ?? TEMPLATES[0];
   const summarySections = useMemo(() => {
@@ -74,6 +88,15 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
     );
     return hit?.id ?? null;
   }, [currentMs, meeting.transcript]);
+
+  const rangeSegs = useMemo(() => {
+    const start = meeting.transcript.find((s) => s.id === rangeStart);
+    const end = meeting.transcript.find((s) => s.id === rangeEnd) ?? start;
+    if (!start || !end) return null;
+    const a = start.startMs <= end.startMs ? start : end;
+    const b = start.startMs <= end.startMs ? end : start;
+    return { start: a, end: b };
+  }, [meeting.transcript, rangeStart, rangeEnd]);
 
   function seek(ms: number) {
     setCurrentMs(Math.max(0, Math.min(ms, meeting.durationMs)));
@@ -96,10 +119,21 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
   }, [playing, meeting.durationMs]);
 
   useEffect(() => {
-    if (playing && currentMs >= meeting.durationMs) {
-      setPlaying(false);
-    }
+    if (playing && currentMs >= meeting.durationMs) setPlaying(false);
   }, [playing, currentMs, meeting.durationMs]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        setPlaying((p) => !p);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   function toggleAction(id: string) {
     setActions((prev) =>
@@ -125,14 +159,16 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
     return `${origin}${path}${query}`;
   }
 
-  async function copyLink(label: string, query = "") {
-    await copyText(label, meetingUrl(query));
+  function openShare(title: string, query = "") {
+    setShareTitle(title);
+    setShareUrl(meetingUrl(query));
+    setShareOpen(true);
   }
 
   function shareClip(startMs: number, endMs: number, title: string) {
     const start = Math.floor(startMs / 1000);
     const end = Math.floor(endMs / 1000);
-    void copyLink(`Clip · ${title}`, `?t=${start}-${end}`);
+    openShare(`Clip · ${title}`, `?t=${start}-${end}`);
   }
 
   async function copyActions() {
@@ -150,6 +186,61 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
     await copyText("Actions copied", text);
   }
 
+  function onTranscriptClick(segId: string, startMs: number) {
+    seek(startMs);
+    if (!rangeStart || (rangeStart && rangeEnd)) {
+      setRangeStart(segId);
+      setRangeEnd(null);
+      return;
+    }
+    setRangeEnd(segId);
+  }
+
+  function saveHighlight() {
+    if (!rangeSegs) return;
+    const title =
+      hlTitle.trim() ||
+      rangeSegs.start.text.split(" ").slice(0, 6).join(" ") + "…";
+    const next: Highlight = {
+      id: `h-local-${Date.now()}`,
+      title,
+      description: hlNote.trim() || "Marked from transcript.",
+      startMs: rangeSegs.start.startMs,
+      endMs: rangeSegs.end.endMs,
+      kind: "moment",
+    };
+    setHighlights((prev) => [next, ...prev]);
+    setHlTitle("");
+    setHlNote("");
+    setRangeStart(null);
+    setRangeEnd(null);
+    setTab("related");
+  }
+
+  function postComment() {
+    const text = draft.trim();
+    if (!text) return;
+    const next: Comment = {
+      id: `c-local-${Date.now()}`,
+      authorId: "local-you",
+      text,
+      createdAt: new Date().toISOString(),
+      timestampMs: currentMs || undefined,
+    };
+    setComments((prev) => [...prev, next]);
+    setDraft("");
+  }
+
+  function inRange(segId: string) {
+    if (!rangeStart) return false;
+    if (!rangeSegs) return segId === rangeStart;
+    const ids = meeting.transcript.map((s) => s.id);
+    const a = ids.indexOf(rangeSegs.start.id);
+    const b = ids.indexOf(rangeSegs.end.id);
+    const i = ids.indexOf(segId);
+    return i >= Math.min(a, b) && i <= Math.max(a, b);
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -162,14 +253,19 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => copyLink("Meeting link")}
+            onClick={() => openShare(meeting.title)}
             className="rounded-full border border-white/10 bg-surface px-3.5 py-1.5 text-xs font-semibold text-white hover:border-cyan/40"
           >
-            {copied === "Meeting link" ? "Copied!" : "Share link"}
+            Share
           </button>
           <button
             type="button"
-            onClick={() => copyLink("Export stub")}
+            onClick={() =>
+              void copyText(
+                "Summary copied",
+                formatSummaryMarkdown(meeting, actions),
+              )
+            }
             className="rounded-full bg-cyan px-3.5 py-1.5 text-xs font-bold text-black hover:brightness-110"
           >
             Export
@@ -211,10 +307,10 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
       </header>
 
       <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-        {/* Player + timeline */}
         <section className="rounded-3xl border border-white/10 bg-surface overflow-hidden shadow-soft">
           <div className="relative aspect-video bg-gradient-to-br from-[#0a0a0a] via-[#111] to-[#06202a] flex items-center justify-center">
-            <div className="absolute inset-0 opacity-40"
+            <div
+              className="absolute inset-0 opacity-40"
               style={{
                 backgroundImage:
                   "radial-gradient(circle at 30% 40%, rgba(8,189,242,0.18), transparent 40%), radial-gradient(circle at 70% 60%, rgba(255,240,106,0.08), transparent 35%)",
@@ -238,7 +334,7 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
                 )}
               </button>
               <p className="text-xs text-white/60">
-                Video/player placeholder · seek via transcript or timeline
+                Video/player placeholder · Space to play · seek via transcript
               </p>
             </div>
             <div className="absolute bottom-3 left-3 right-3 flex gap-2">
@@ -273,7 +369,7 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
                 className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan/80 to-cyan"
                 style={{ width: `${progress}%` }}
               />
-              {meeting.highlights.map((h) => (
+              {highlights.map((h) => (
                 <button
                   key={h.id}
                   type="button"
@@ -290,12 +386,12 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
               ))}
             </div>
             <p className="mt-2 text-[11px] text-muted">
-              Yellow markers = highlights / moments. Click to jump.
+              Yellow markers = highlights. Click two transcript lines to mark a
+              new moment.
             </p>
           </div>
         </section>
 
-        {/* Tabs panel */}
         <section className="rounded-3xl border border-white/10 bg-surface shadow-soft flex flex-col min-h-[420px]">
           <div className="flex gap-1 overflow-x-auto border-b border-white/10 px-2 pt-2 scrollbar-thin">
             {TABS.map((t) => (
@@ -403,7 +499,13 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
                     })}
                   </ul>
                 </div>
-                <AskStub />
+                <AskFathom
+                  meeting={meeting}
+                  onJump={(ms) => {
+                    seek(ms);
+                    setTab("transcript");
+                  }}
+                />
               </div>
             )}
 
@@ -481,27 +583,21 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
 
             {tab === "comments" && (
               <div className="space-y-3">
-                {meeting.comments.length === 0 ? (
+                {comments.length === 0 ? (
                   <p className="text-sm text-muted">No comments yet.</p>
                 ) : (
-                  meeting.comments.map((c) => {
+                  comments.map((c) => {
                     const author = getParticipant(meeting, c.authorId);
+                    const name = author?.name ?? "You";
+                    const color = author?.avatarColor ?? "#08bdf2";
                     return (
                       <div
                         key={c.id}
                         className="rounded-2xl border border-white/10 bg-black/25 p-3"
                       >
                         <div className="mb-2 flex items-center gap-2">
-                          {author && (
-                            <Avatar
-                              name={author.name}
-                              color={author.avatarColor}
-                              size="sm"
-                            />
-                          )}
-                          <span className="text-sm font-medium text-white">
-                            {author?.name ?? "Someone"}
-                          </span>
+                          <Avatar name={name} color={color} size="sm" />
+                          <span className="text-sm font-medium text-white">{name}</span>
                           <span className="text-[11px] text-muted">
                             {new Date(c.createdAt).toLocaleString()}
                           </span>
@@ -523,27 +619,99 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
                     );
                   })
                 )}
-                <div className="rounded-2xl border border-dashed border-white/15 p-3 text-xs text-muted">
-                  Comment composer stubbed for this demo.
-                </div>
+                <form
+                  className="rounded-2xl border border-white/10 p-3"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    postComment();
+                  }}
+                >
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    rows={2}
+                    placeholder="Add a comment at the current playhead…"
+                    className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-muted"
+                  />
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="font-mono text-[11px] text-muted">
+                      @ {formatTimestamp(currentMs)}
+                    </span>
+                    <button
+                      type="submit"
+                      className="rounded-full bg-cyan px-3 py-1 text-xs font-bold text-black"
+                    >
+                      Post
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 
             {tab === "transcript" && (
-              <div className="space-y-1">
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
+                  <p className="text-[11px] text-muted">
+                    Click two lines to set a highlight range
+                    {rangeSegs
+                      ? ` · ${formatTimestamp(rangeSegs.start.startMs)}–${formatTimestamp(rangeSegs.end.endMs)}`
+                      : rangeStart
+                        ? " · pick an end line"
+                        : ""}
+                  </p>
+                  {rangeStart && (
+                    <div className="mt-2 space-y-2">
+                      <input
+                        value={hlTitle}
+                        onChange={(e) => setHlTitle(e.target.value)}
+                        placeholder="Highlight title"
+                        className="w-full rounded-full border border-white/10 bg-surface px-3 py-1.5 text-sm text-white outline-none"
+                      />
+                      <input
+                        value={hlNote}
+                        onChange={(e) => setHlNote(e.target.value)}
+                        placeholder="Optional note"
+                        className="w-full rounded-full border border-white/10 bg-surface px-3 py-1.5 text-sm text-white outline-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRangeStart(null);
+                            setRangeEnd(null);
+                          }}
+                          className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-muted"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!rangeSegs}
+                          onClick={saveHighlight}
+                          className="rounded-full bg-yellow px-3 py-1 text-[11px] font-bold text-black disabled:opacity-40"
+                        >
+                          Save highlight
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {meeting.transcript.map((seg) => {
                   const speaker = getParticipant(meeting, seg.speakerId);
                   const active = seg.id === activeSegmentId;
+                  const marked = inRange(seg.id);
                   return (
                     <button
                       key={seg.id}
                       type="button"
-                      onClick={() => seek(seg.startMs)}
+                      onClick={() => onTranscriptClick(seg.id, seg.startMs)}
                       className={cn(
                         "w-full text-left rounded-2xl px-3 py-2.5 transition border",
-                        active
-                          ? "border-cyan/40 bg-cyan-dim"
-                          : "border-transparent hover:bg-white/[0.04]",
+                        marked
+                          ? "border-cyan/50 bg-cyan-dim"
+                          : active
+                            ? "border-cyan/40 bg-cyan-dim/50"
+                            : "border-transparent hover:bg-white/[0.04]",
                       )}
                     >
                       <div className="mb-1 flex items-center gap-2">
@@ -575,7 +743,7 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
                 <h2 className="text-sm font-semibold text-white">
                   Highlights & clips
                 </h2>
-                {meeting.highlights.map((h) => (
+                {highlights.map((h) => (
                   <div
                     key={h.id}
                     className="rounded-2xl border border-white/10 bg-black/30 p-3"
@@ -607,17 +775,31 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
                         onClick={() => shareClip(h.startMs, h.endMs, h.title)}
                         className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-semibold text-cyan hover:border-cyan/40"
                       >
-                        {copied?.startsWith("Clip") && copied.includes(h.title)
-                          ? "Copied!"
-                          : "Share clip"}
+                        Share clip
                       </button>
                     </div>
                   </div>
                 ))}
-                <div className="rounded-2xl border border-dashed border-white/15 p-4 text-xs text-muted">
-                  Clip sharing copies a timestamped link. No video transcoding in
-                  this demo.
-                </div>
+
+                <h2 className="pt-2 text-sm font-semibold text-white">
+                  Related meetings
+                </h2>
+                {related.length === 0 ? (
+                  <p className="text-xs text-muted">No overlapping participants.</p>
+                ) : (
+                  related.map((m) => (
+                    <Link
+                      key={m.id}
+                      href={`/meetings/${m.id}/`}
+                      className="block rounded-2xl border border-white/10 bg-black/25 p-3 hover:border-cyan/40"
+                    >
+                      <p className="text-sm font-semibold text-white">{m.title}</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted">
+                        {m.enhancedSummary}
+                      </p>
+                    </Link>
+                  ))
+                )}
               </div>
             )}
           </div>
@@ -629,20 +811,17 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
           )}
         </section>
       </div>
-    </div>
-  );
-}
 
-function AskStub() {
-  return (
-    <div className="mt-2 rounded-2xl border border-white/10 bg-black/40 p-3">
-      <div className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-wide text-cyan">
-        <span aria-hidden>✦</span> ASK FATHOM
-      </div>
-      <input
-        disabled
-        placeholder="What follow-ups did we commit to? (stubbed)"
-        className="w-full rounded-full border border-white/10 bg-surface px-3 py-2 text-sm text-muted outline-none"
+      <ShareSheet
+        open={shareOpen}
+        title={shareTitle}
+        url={shareUrl}
+        onClose={() => setShareOpen(false)}
+        onCopied={(label) => {
+          setCopied(label);
+          setShareOpen(false);
+          setTimeout(() => setCopied(null), 1800);
+        }}
       />
     </div>
   );
