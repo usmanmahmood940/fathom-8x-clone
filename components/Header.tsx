@@ -15,22 +15,13 @@ export function Header() {
           </span>
         </Link>
 
-        <nav className="hidden md:flex items-center rounded-full border border-white/10 bg-white/[0.03] px-1.5 py-1 text-sm">
+        <nav className="hidden sm:flex items-center rounded-full border border-white/10 bg-white/[0.03] px-1.5 py-1 text-sm">
           <Link
             href="/"
             className="rounded-full px-3.5 py-1.5 font-medium text-cyan"
           >
             Meetings
           </Link>
-          <span className="rounded-full px-3.5 py-1.5 text-white/70">
-            Overview
-          </span>
-          <span className="rounded-full px-3.5 py-1.5 text-white/70">
-            Solutions
-          </span>
-          <span className="rounded-full px-3.5 py-1.5 text-white/70">
-            Pricing
-          </span>
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">

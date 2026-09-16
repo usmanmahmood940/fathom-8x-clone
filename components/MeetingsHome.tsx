@@ -1,8 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { Meeting, MeetingFilter } from "@/lib/types";
 import { MeetingCard } from "./MeetingCard";
+import { searchMeetings } from "@/lib/search";
+import {
+  cn,
+  formatTimestamp,
+  startOfDay,
+  startOfWeekMonday,
+} from "@/lib/utils";
 
 const FILTERS: { id: MeetingFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -11,19 +19,31 @@ const FILTERS: { id: MeetingFilter; label: string }[] = [
   { id: "recorded", label: "Recorded" },
 ];
 
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<MeetingFilter>("all");
   const [tag, setTag] = useState<string>("all");
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
     meetings.forEach((m) => m.tags.forEach((t) => set.add(t)));
     return Array.from(set).sort();
+  }, [meetings]);
+
+  const weekDays = useMemo(() => {
+    const monday = startOfWeekMonday(new Date());
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const key = d.getTime();
+      const onDay = meetings.filter(
+        (m) => startOfDay(new Date(m.startedAt)).getTime() === key,
+      );
+      return { date: d, key, meetings: onDay };
+    });
   }, [meetings]);
 
   const filtered = useMemo(() => {
@@ -37,6 +57,12 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
       .filter((m) => {
         if (tag !== "all" && !m.tags.includes(tag)) return false;
         const started = new Date(m.startedAt);
+        if (
+          selectedDay != null &&
+          startOfDay(started).getTime() !== selectedDay
+        ) {
+          return false;
+        }
         if (filter === "today" && startOfDay(started).getTime() !== today.getTime()) {
           return false;
         }
@@ -49,8 +75,11 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
           m.enhancedSummary,
           m.platform,
           ...m.tags,
-          ...m.participants.map((p) => p.name),
+          ...m.participants.map((p) => `${p.name} ${p.email}`),
           ...m.transcript.map((t) => t.text),
+          ...m.actionItems.map((a) => a.text),
+          ...m.comments.map((c) => c.text),
+          ...m.summary.flatMap((s) => s.bullets),
         ]
           .join(" ")
           .toLowerCase();
@@ -60,7 +89,15 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
         (a, b) =>
           new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
       );
-  }, [meetings, query, filter, tag]);
+  }, [meetings, query, filter, tag, selectedDay]);
+
+  const hits = useMemo(() => {
+    if (!query.trim()) return [];
+    const allowed = new Set(filtered.map((m) => m.id));
+    return searchMeetings(meetings, query).filter((h) =>
+      allowed.has(h.meetingId),
+    );
+  }, [meetings, filtered, query]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12">
@@ -89,6 +126,60 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
         </div>
       </section>
 
+      <section className="mb-8">
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <h2 className="text-sm font-semibold text-white">This week</h2>
+          <p className="text-[11px] text-muted">
+            Static calendar · click a day to filter
+          </p>
+        </div>
+        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+          {weekDays.map((day, i) => {
+            const isToday =
+              startOfDay(new Date()).getTime() === day.key;
+            const active = selectedDay === day.key;
+            return (
+              <button
+                key={day.key}
+                type="button"
+                onClick={() =>
+                  setSelectedDay((prev) => (prev === day.key ? null : day.key))
+                }
+                className={cn(
+                  "rounded-2xl border px-1.5 py-2 sm:px-2 sm:py-2.5 text-left transition",
+                  active
+                    ? "border-cyan/50 bg-cyan-dim"
+                    : isToday
+                      ? "border-yellow/40 bg-surface"
+                      : "border-white/10 bg-surface hover:border-white/25",
+                )}
+              >
+                <p className="text-[10px] uppercase tracking-wide text-muted">
+                  {WEEKDAYS[i]}
+                </p>
+                <p
+                  className={cn(
+                    "mt-0.5 text-sm font-semibold",
+                    isToday ? "text-yellow" : "text-white",
+                  )}
+                >
+                  {day.date.getDate()}
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-0.5 min-h-2">
+                  {day.meetings.slice(0, 3).map((m) => (
+                    <span
+                      key={m.id}
+                      className="h-1.5 w-1.5 rounded-full bg-cyan"
+                      title={m.title}
+                    />
+                  ))}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative flex-1 max-w-xl">
           <svg
@@ -113,7 +204,10 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
             <button
               key={f.id}
               type="button"
-              onClick={() => setFilter(f.id)}
+              onClick={() => {
+                setFilter(f.id);
+                setSelectedDay(null);
+              }}
               className={
                 filter === f.id
                   ? "rounded-full bg-yellow px-3.5 py-1.5 text-xs font-bold text-black"
@@ -153,6 +247,35 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
           </button>
         ))}
       </div>
+
+      {query.trim() && hits.length > 0 && (
+        <div className="mb-6 grid gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan">
+            {hits.length} search {hits.length === 1 ? "hit" : "hits"}
+          </p>
+          {hits.map((hit) => {
+            const jump =
+              hit.timestampMs != null
+                ? `/meetings/${hit.meetingId}/?t=${Math.floor(hit.timestampMs / 1000)}`
+                : `/meetings/${hit.meetingId}/`;
+            return (
+              <Link
+                key={`${hit.meetingId}-${hit.snippet}`}
+                href={jump}
+                className="rounded-2xl border border-white/10 bg-surface p-4 hover:border-cyan/40 transition"
+              >
+                <p className="text-sm font-semibold text-white">{hit.title}</p>
+                <p className="mt-1 text-sm text-muted">{hit.snippet}</p>
+                {hit.timestampMs != null && (
+                  <p className="mt-2 font-mono text-[11px] text-yellow">
+                    Jump to {formatTimestamp(hit.timestampMs)}
+                  </p>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/15 bg-surface/60 p-12 text-center text-sm text-muted">

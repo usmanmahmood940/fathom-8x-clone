@@ -6,7 +6,7 @@ export const meetings: Meeting[] = [
     title: "Weekly Product Sync",
     description:
       "Roadmap check-in: Q4 launch readiness, pricing experiments, and design QA.",
-    startedAt: "2026-09-12T15:00:00.000Z",
+    startedAt: "2026-09-15T15:00:00.000Z",
     durationMs: 42 * 60 * 1000,
     platform: "Zoom",
     captureMode: "Full audio + video",
@@ -196,7 +196,7 @@ export const meetings: Meeting[] = [
     title: "Customer Call — Acme Corp Onboarding",
     description:
       "Kickoff with Acme's RevOps team: SSO, retention policies, and success metrics.",
-    startedAt: "2026-09-11T18:30:00.000Z",
+    startedAt: "2026-09-15T18:30:00.000Z",
     durationMs: 38 * 60 * 1000,
     platform: "Google Meet",
     captureMode: "Full audio + video",
@@ -374,7 +374,7 @@ export const meetings: Meeting[] = [
     id: "m-eng-standup",
     title: "Engineering Standup",
     description: "Daily standup: player bugs, transcript latency, and deploy window.",
-    startedAt: "2026-09-15T14:15:00.000Z",
+    startedAt: "2026-09-16T16:15:00.000Z",
     durationMs: 14 * 60 * 1000,
     platform: "Zoom",
     captureMode: "Transcript-only",
@@ -492,7 +492,7 @@ export const meetings: Meeting[] = [
     title: "Design Critique — Meeting Detail",
     description:
       "Review of transcript density, summary sections, and share-clip affordances.",
-    startedAt: "2026-09-10T16:00:00.000Z",
+    startedAt: "2026-09-14T16:00:00.000Z",
     durationMs: 51 * 60 * 1000,
     platform: "Zoom",
     captureMode: "Audio + transcript",
@@ -632,7 +632,7 @@ export const meetings: Meeting[] = [
     title: "Sales Pipeline Review",
     description:
       "Weekly pipeline review: late-stage deals, demo feedback, and competitive notes.",
-    startedAt: "2026-09-09T20:00:00.000Z",
+    startedAt: "2026-09-12T20:00:00.000Z",
     durationMs: 33 * 60 * 1000,
     platform: "Teams",
     captureMode: "Full audio + video",
@@ -765,7 +765,7 @@ export const meetings: Meeting[] = [
     title: "Security Review — Data Retention",
     description:
       "Internal security review of retention defaults, export controls, and bot access scopes.",
-    startedAt: "2026-09-08T17:00:00.000Z",
+    startedAt: "2026-09-10T17:00:00.000Z",
     durationMs: 47 * 60 * 1000,
     platform: "Google Meet",
     captureMode: "Transcript-only",
