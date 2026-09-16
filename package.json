@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:pages": "NEXT_PUBLIC_BASE_PATH=/fathom-8x-clone next build",
     "start": "next start",
     "lint": "eslint"
   },
