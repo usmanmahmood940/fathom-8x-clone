@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Meeting, MeetingTab } from "@/lib/types";
 import { Avatar, AvatarStack } from "./Avatar";
 import {
@@ -10,6 +10,8 @@ import {
   formatMeetingDate,
   formatMeetingTime,
   formatTimestamp,
+  parseClipQuery,
+  withBasePath,
 } from "@/lib/utils";
 import { getParticipant } from "@/lib/data";
 
@@ -21,14 +23,50 @@ const TABS: { id: MeetingTab; label: string }[] = [
   { id: "related", label: "Related" },
 ];
 
+const TEMPLATES: { id: string; label: string; order: string[] }[] = [
+  {
+    id: "general",
+    label: "General",
+    order: [
+      "Meeting Purpose",
+      "Topics",
+      "Current Challenges",
+      "Goals",
+      "Upcoming Strategies",
+    ],
+  },
+  {
+    id: "customer",
+    label: "Customer",
+    order: ["Meeting Purpose", "Goals", "Topics", "Current Challenges"],
+  },
+  {
+    id: "sales",
+    label: "Sales",
+    order: ["Upcoming Strategies", "Topics", "Goals", "Meeting Purpose"],
+  },
+];
+
 export function MeetingDetail({ meeting }: { meeting: Meeting }) {
   const [tab, setTab] = useState<MeetingTab>("summary");
   const [currentMs, setCurrentMs] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [actions, setActions] = useState(meeting.actionItems);
   const [copied, setCopied] = useState<string | null>(null);
+  const [templateIndex, setTemplateIndex] = useState(0);
 
   const progress = Math.min(100, (currentMs / meeting.durationMs) * 100);
+  const template = TEMPLATES[templateIndex] ?? TEMPLATES[0];
+  const summarySections = useMemo(() => {
+    const byTitle = new Map(meeting.summary.map((s) => [s.title, s]));
+    const ordered = template.order
+      .map((title) => byTitle.get(title))
+      .filter((s): s is NonNullable<typeof s> => Boolean(s));
+    const extras = meeting.summary.filter(
+      (s) => !template.order.includes(s.title),
+    );
+    return [...ordered, ...extras];
+  }, [meeting.summary, template.order]);
 
   const activeSegmentId = useMemo(() => {
     const hit = meeting.transcript.find(
@@ -41,21 +79,37 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
     setCurrentMs(Math.max(0, Math.min(ms, meeting.durationMs)));
   }
 
+  useEffect(() => {
+    const clip = parseClipQuery(window.location.search);
+    if (!clip) return;
+    seek(clip.startMs);
+    setTab(clip.endMs != null ? "related" : "transcript");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- apply once from the shared clip URL
+  }, [meeting.id]);
+
+  useEffect(() => {
+    if (!playing) return;
+    const id = window.setInterval(() => {
+      setCurrentMs((ms) => Math.min(ms + 2000, meeting.durationMs));
+    }, 200);
+    return () => window.clearInterval(id);
+  }, [playing, meeting.durationMs]);
+
+  useEffect(() => {
+    if (playing && currentMs >= meeting.durationMs) {
+      setPlaying(false);
+    }
+  }, [playing, currentMs, meeting.durationMs]);
+
   function toggleAction(id: string) {
     setActions((prev) =>
       prev.map((a) => (a.id === id ? { ...a, done: !a.done } : a)),
     );
   }
 
-  async function copyLink(label: string, hash = "") {
-    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-    const path = `${base}/meetings/${meeting.id}/${hash}`;
-    const url =
-      typeof window !== "undefined"
-        ? `${window.location.origin}${path}`
-        : path;
+  async function copyText(label: string, text: string) {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(text);
       setCopied(label);
       setTimeout(() => setCopied(null), 1800);
     } catch {
@@ -64,8 +118,36 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
     }
   }
 
+  function meetingUrl(query = "") {
+    const path = withBasePath(`/meetings/${meeting.id}/`);
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "";
+    return `${origin}${path}${query}`;
+  }
+
+  async function copyLink(label: string, query = "") {
+    await copyText(label, meetingUrl(query));
+  }
+
   function shareClip(startMs: number, endMs: number, title: string) {
-    void copyLink(`Clip · ${title}`, `?t=${Math.floor(startMs / 1000)}-${Math.floor(endMs / 1000)}`);
+    const start = Math.floor(startMs / 1000);
+    const end = Math.floor(endMs / 1000);
+    void copyLink(`Clip · ${title}`, `?t=${start}-${end}`);
+  }
+
+  async function copyActions() {
+    const text = actions
+      .map((a) => {
+        const owner = a.assigneeId
+          ? getParticipant(meeting, a.assigneeId)
+          : undefined;
+        const mark = a.done ? "x" : " ";
+        const who = owner ? ` (@${owner.name})` : "";
+        const due = a.dueDate ? ` due ${a.dueDate}` : "";
+        return `- [${mark}] ${a.text}${who}${due}`;
+      })
+      .join("\n");
+    await copyText("Actions copied", text);
   }
 
   return (
@@ -240,15 +322,18 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
                   <h2 className="text-sm font-semibold text-white">Enhanced Summary</h2>
                   <button
                     type="button"
+                    onClick={() =>
+                      setTemplateIndex((i) => (i + 1) % TEMPLATES.length)
+                    }
                     className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-muted hover:text-cyan"
                   >
-                    Change Template
+                    Template: {template.label}
                   </button>
                 </div>
                 <p className="text-sm leading-relaxed text-white/80">
                   {meeting.enhancedSummary}
                 </p>
-                {meeting.summary.map((section) => (
+                {summarySections.map((section) => (
                   <div key={section.title}>
                     <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-cyan">
                       {section.title}
@@ -331,12 +416,7 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
                   </h2>
                   <button
                     type="button"
-                    onClick={() =>
-                      copyLink(
-                        "Actions copied",
-                        "",
-                      )
-                    }
+                    onClick={() => void copyActions()}
                     className="text-[11px] text-cyan hover:underline"
                   >
                     Copy all

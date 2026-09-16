@@ -50,3 +50,41 @@ export function initials(name: string): string {
 export function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
 }
+
+export function withBasePath(path: string): string {
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${normalized}`;
+}
+
+export function parseClipQuery(
+  search: string,
+): { startMs: number; endMs?: number } | null {
+  const raw = search.startsWith("?") ? search.slice(1) : search;
+  const t = new URLSearchParams(raw).get("t");
+  if (!t) return null;
+  const [startRaw, endRaw] = t.split("-");
+  const startSec = Number(startRaw);
+  if (!Number.isFinite(startSec) || startSec < 0) return null;
+  const endSec =
+    endRaw != null && endRaw !== "" ? Number(endRaw) : undefined;
+  return {
+    startMs: Math.floor(startSec * 1000),
+    endMs:
+      endSec != null && Number.isFinite(endSec)
+        ? Math.floor(endSec * 1000)
+        : undefined,
+  };
+}
+
+export function startOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+export function startOfWeekMonday(d: Date) {
+  const day = startOfDay(d);
+  const weekday = day.getDay();
+  const offset = weekday === 0 ? -6 : 1 - weekday;
+  day.setDate(day.getDate() + offset);
+  return day;
+}
