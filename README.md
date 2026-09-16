@@ -15,7 +15,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ```bash
 npm run build
-npm start
+npx --yes serve out
 ```
 
 ## Stack
