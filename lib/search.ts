@@ -5,6 +5,8 @@ export type SearchHit = {
   title: string;
   snippet: string;
   timestampMs?: number;
+  speaker?: string;
+  date?: string;
 };
 
 function clip(text: string, q: string, radius = 72): string {
@@ -21,12 +23,17 @@ export function searchMeetings(meetings: Meeting[], raw: string): SearchHit[] {
   const hits: SearchHit[] = [];
 
   for (const m of meetings) {
-    const push = (text: string, timestampMs?: number) => {
+    const push = (
+      text: string,
+      extra?: { timestampMs?: number; speaker?: string },
+    ) => {
       hits.push({
         meetingId: m.id,
         title: m.title,
         snippet: clip(text, q),
-        timestampMs,
+        date: m.startedAt,
+        timestampMs: extra?.timestampMs,
+        speaker: extra?.speaker,
       });
     };
 
@@ -40,17 +47,18 @@ export function searchMeetings(meetings: Meeting[], raw: string): SearchHit[] {
     }
     const seg = m.transcript.find((t) => t.text.toLowerCase().includes(q));
     if (seg) {
-      push(seg.text, seg.startMs);
+      const speaker = m.participants.find((p) => p.id === seg.speakerId);
+      push(seg.text, { timestampMs: seg.startMs, speaker: speaker?.name });
       continue;
     }
     const action = m.actionItems.find((a) => a.text.toLowerCase().includes(q));
     if (action) {
-      push(action.text, action.timestampMs);
+      push(action.text, { timestampMs: action.timestampMs });
       continue;
     }
     const comment = m.comments.find((c) => c.text.toLowerCase().includes(q));
     if (comment) {
-      push(comment.text, comment.timestampMs);
+      push(comment.text, { timestampMs: comment.timestampMs });
       continue;
     }
     const bullet = m.summary

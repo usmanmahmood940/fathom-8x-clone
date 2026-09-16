@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Meeting, MeetingFilter } from "@/lib/types";
 import { MeetingCard } from "./MeetingCard";
+import { RecordSheet } from "./RecordSheet";
 import { searchMeetings } from "@/lib/search";
+import { allPeople } from "@/lib/data";
 import {
   cn,
+  formatMeetingDate,
   formatTimestamp,
   startOfDay,
   startOfWeekMonday,
@@ -21,11 +24,38 @@ const FILTERS: { id: MeetingFilter; label: string }[] = [
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+function Snippet({ text, query }: { text: string; query: string }) {
+  const q = query.trim();
+  if (!q) return <>{text}</>;
+  const i = text.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, i)}
+      <mark className="rounded-sm bg-yellow/30 text-yellow">{text.slice(i, i + q.length)}</mark>
+      {text.slice(i + q.length)}
+    </>
+  );
+}
+
 export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<MeetingFilter>("all");
   const [tag, setTag] = useState<string>("all");
+  const [person, setPerson] = useState<string>("all");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [recordOpen, setRecordOpen] = useState(false);
+
+  useEffect(() => {
+    function syncHash() {
+      if (window.location.hash === "#record") setRecordOpen(true);
+    }
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, []);
+
+  const people = useMemo(() => allPeople(meetings), [meetings]);
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -56,6 +86,9 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
     return meetings
       .filter((m) => {
         if (tag !== "all" && !m.tags.includes(tag)) return false;
+        if (person !== "all" && !m.participants.some((p) => p.id === person)) {
+          return false;
+        }
         const started = new Date(m.startedAt);
         if (
           selectedDay != null &&
@@ -89,7 +122,7 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
         (a, b) =>
           new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
       );
-  }, [meetings, query, filter, tag, selectedDay]);
+  }, [meetings, query, filter, tag, person, selectedDay]);
 
   const hits = useMemo(() => {
     if (!query.trim()) return [];
@@ -102,12 +135,23 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12">
       <section className="mb-10">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan">
-          Meeting intelligence
-        </p>
-        <h1 className="mt-3 max-w-3xl text-4xl sm:text-6xl font-semibold tracking-tight text-white leading-[1.05]">
-          Never miss what matters.
-        </h1>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan">
+              Meeting intelligence
+            </p>
+            <h1 className="mt-3 max-w-3xl text-4xl sm:text-6xl font-semibold tracking-tight text-white leading-[1.05]">
+              Never miss what matters.
+            </h1>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRecordOpen(true)}
+            className="rounded-full bg-cyan px-4 py-2 text-sm font-bold text-black hover:brightness-110"
+          >
+            Record
+          </button>
+        </div>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-muted leading-relaxed">
           A cinematic Fathom-inspired demo with seeded recordings, AI summaries,
           speaker-attributed transcripts, action items, and shareable clips.
@@ -220,7 +264,7 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
         </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => setTag("all")}
@@ -248,6 +292,34 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
         ))}
       </div>
 
+      <div className="mb-6 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setPerson("all")}
+          className={
+            person === "all"
+              ? "rounded-full bg-yellow px-3 py-1 text-xs font-bold text-black"
+              : "rounded-full border border-white/10 px-3 py-1 text-xs font-medium text-muted hover:text-white"
+          }
+        >
+          All people
+        </button>
+        {people.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setPerson(p.id)}
+            className={
+              person === p.id
+                ? "rounded-full bg-yellow px-3 py-1 text-xs font-bold text-black"
+                : "rounded-full border border-white/10 px-3 py-1 text-xs font-medium text-muted hover:text-white"
+            }
+          >
+            {p.name.split(" ")[0]}
+          </button>
+        ))}
+      </div>
+
       {query.trim() && hits.length > 0 && (
         <div className="mb-6 grid gap-2">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan">
@@ -265,12 +337,18 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
                 className="rounded-2xl border border-white/10 bg-surface p-4 hover:border-cyan/40 transition"
               >
                 <p className="text-sm font-semibold text-white">{hit.title}</p>
-                <p className="mt-1 text-sm text-muted">{hit.snippet}</p>
-                {hit.timestampMs != null && (
-                  <p className="mt-2 font-mono text-[11px] text-yellow">
-                    Jump to {formatTimestamp(hit.timestampMs)}
-                  </p>
-                )}
+                <p className="mt-1 text-sm text-muted">
+                  <Snippet text={hit.snippet} query={query} />
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted">
+                  {hit.speaker && <span className="text-cyan">{hit.speaker}</span>}
+                  {hit.date && <span>{formatMeetingDate(hit.date)}</span>}
+                  {hit.timestampMs != null && (
+                    <span className="font-mono text-yellow">
+                      Jump to {formatTimestamp(hit.timestampMs)}
+                    </span>
+                  )}
+                </div>
               </Link>
             );
           })}
@@ -279,7 +357,15 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/15 bg-surface/60 p-12 text-center text-sm text-muted">
-          No meetings match. Try another keyword — or Ask Fathom (stubbed).
+          No meetings match. Open any meeting and try Ask Fathom, or{" "}
+          <button
+            type="button"
+            className="text-cyan hover:underline"
+            onClick={() => setRecordOpen(true)}
+          >
+            Record
+          </button>
+          .
         </div>
       ) : (
         <div className="grid gap-3">
@@ -288,6 +374,16 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
           ))}
         </div>
       )}
+
+      <RecordSheet
+        open={recordOpen}
+        onClose={() => {
+          setRecordOpen(false);
+          if (window.location.hash === "#record") {
+            history.replaceState(null, "", window.location.pathname);
+          }
+        }}
+      />
     </div>
   );
 }

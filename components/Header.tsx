@@ -29,10 +29,10 @@ export function Header() {
             Public demo · no login
           </span>
           <Link
-            href="/"
+            href="/#record"
             className="rounded-full bg-cyan px-3.5 py-1.5 text-xs sm:text-sm font-bold text-black hover:brightness-110 transition"
           >
-            Open app
+            Record
           </Link>
         </div>
       </div>
