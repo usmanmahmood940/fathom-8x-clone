@@ -5,43 +5,35 @@ Record on Loom (or similar). Public HTTPS link required. Face on camera the whol
 **Live URL:** https://usmanmahmood940.github.io/fathom-8x-clone/  
 **Repo:** https://github.com/usmanmahmood940/fathom-8x-clone
 
-If Vercel also deployed, mention that URL too.
+## 0:00–0:25 — Intro
 
-## 0:00–0:20 — Intro
+“I’m Usman. 24-hour Fathom clone for 8x. No login. Recording bot, real video, and a real LLM are stubbed — Ask Fathom is local retrieval over the seed transcript.”
 
-“I’m Usman. This is a 24-hour Fathom clone for 8x. No login. The recording bot and real video file are stubbed — the rest is seeded, clickable product.”
+Open the live URL incognito.
 
-Open the live URL in a signed-out / incognito window.
+## 0:25–1:10 — Record, calendar, search
 
-## 0:20–1:10 — Home: calendar, Today, search
+- Click **Record** → pick **Transcript-only (Bot-free)** → Start capture. Wait for processing, land on Engineering Standup.
+- Back to meetings. Click **Today** on the week strip. Filter **Ava** (people chips).
+- Search `Okta`. Show highlighted snippet + speaker/date. Open the jump link.
 
-- Point at the week strip. Click **today** (Engineering Standup).
-- Click **All**, then **Today**, then **This week**.
-- Search `Okta` or `backoff`. Open a snippet that says “Jump to …”.
-
-## 1:10–2:20 — Meeting: summary + template + player
+## 1:10–2:20 — Summary, Ask Fathom, template
 
 Open **Weekly Product Sync**.
 
-- Show platform, capture mode, “Recording bot stubbed”.
-- Click **Play** — playhead should move (stub, 10×, no media file).
-- Click **Template: General** twice (Customer → Sales) so sections reorder.
-- Check one action item.
+- Play (or Space). Call out “player is a stub.”
+- Cycle **Template**.
+- Ask Fathom: click **What follow-ups did we commit to?** then Jump to a timestamp.
 
-## 2:20–3:20 — Transcript, highlight, share clip
+## 2:20–3:30 — Highlight, share, comment
 
-- **Transcript** — click a line; playhead jumps.
-- **Related** — Share clip on “Clip sharing ETA Thursday”. Paste the URL in a new tab: it should seek and open Related.
-- **Action Items** → Copy all. Paste in notes for a second.
+- **Transcript**: click two lines → title → **Save highlight**. Related list should show it.
+- **Share clip** on that highlight → Public / Can comment → Copy link. Open in a new tab (seeks).
+- Header **Share** for the whole meeting. **Export** copies markdown.
+- **Comments**: post one line at the playhead.
 
-## 3:20–4:00 — Close
+## 3:30–4:15 — Close
 
-“Stubs: Zoom/Meet bot, real video, Ask Fathom LLM, comment composer, CRM export. Seeded six meetings so the list isn’t empty. Repo has `.agent-logs/` and `CAPTURE-TEST.md`.”
+“Didn’t build: Zoom bot, OAuth calendar, auth, CRM, video transcode. Seeded six meetings. Repo has `.agent-logs/`.”
 
-Paste live URL + GitHub URL on screen. Stop under 5 minutes.
-
-## If something fails on camera
-
-- CSS missing → you are not on the Pages URL after the `.nojekyll` deploy.
-- Today empty → you are in a timezone where 16 Sep 2026 16:15 UTC is not “today”; use **This week**.
-- Clipboard blocked on HTTPS iframe → copy from the toast URL bar after Share clip.
+Paste live URL + GitHub URL. Stop under 5 minutes.

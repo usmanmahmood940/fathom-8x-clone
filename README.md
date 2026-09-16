@@ -52,12 +52,11 @@ Each includes participants, multi-speaker transcript with timestamps, structured
 
 ## What was stubbed
 
-- **Recording bot / capture** — not connected to Zoom/Meet/Teams; capture mode is display-only (`Transcript-only`, `Audio + transcript`, `Full audio + video`).
-- **Video player** — visual placeholder with play/pause and seek; no real media file.
-- **Ask Fathom** — UI entry point only; no LLM backend.
-- **Comments composer** — seeded comments render; posting new comments is stubbed.
-- **Export / CRM sync / integrations** — buttons copy links or are non-functional stubs.
-- **Auth** — intentionally omitted so the demo is public.
+- **Recording bot / capture** — not connected to Zoom/Meet/Teams. **Record** shows a processing state then opens a seeded meeting.
+- **Video player** — visual placeholder with play/pause (Space), seek, and 10× stub playhead; no real media file.
+- **Ask Fathom** — local keyword retrieval over the meeting seed; no LLM backend.
+- **Share permissions** — Public/Unlisted and Viewer/Can comment are demo chrome; the URL is already public.
+- **Auth / CRM / email recaps** — omitted so the demo stays open.
 
 Clip “Share” copies a timestamped URL to the clipboard (no video transcoding).
 
