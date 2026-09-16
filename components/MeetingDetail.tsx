@@ -651,12 +651,13 @@ export function MeetingDetail({ meeting }: { meeting: Meeting }) {
             {tab === "transcript" && (
               <div className="space-y-3">
                 <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
-                  <p className="text-[11px] text-muted">
-                    Click two lines to set a highlight range
+                  <p className="text-[11px] text-cyan">
+                    Click two lines (start, then end), add a title, Save
+                    highlight. Cyan = range.
                     {rangeSegs
-                      ? ` · ${formatTimestamp(rangeSegs.start.startMs)}–${formatTimestamp(rangeSegs.end.endMs)}`
+                      ? ` ${formatTimestamp(rangeSegs.start.startMs)}–${formatTimestamp(rangeSegs.end.endMs)}`
                       : rangeStart
-                        ? " · pick an end line"
+                        ? " Pick the end line."
                         : ""}
                   </p>
                   {rangeStart && (

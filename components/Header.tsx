@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { withBasePath } from "@/lib/utils";
 
 export function Header() {
   return (
@@ -28,12 +29,12 @@ export function Header() {
           <span className="hidden sm:inline text-xs text-white/50">
             Public demo · no login
           </span>
-          <Link
-            href="/#record"
+          <a
+            href={withBasePath("/#record")}
             className="rounded-full bg-cyan px-3.5 py-1.5 text-xs sm:text-sm font-bold text-black hover:brightness-110 transition"
           >
             Record
-          </Link>
+          </a>
         </div>
       </div>
     </header>

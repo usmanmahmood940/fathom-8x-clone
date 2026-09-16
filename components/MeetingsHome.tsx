@@ -380,7 +380,11 @@ export function MeetingsHome({ meetings }: { meetings: Meeting[] }) {
         onClose={() => {
           setRecordOpen(false);
           if (window.location.hash === "#record") {
-            history.replaceState(null, "", window.location.pathname);
+            history.replaceState(
+              null,
+              "",
+              `${window.location.pathname}${window.location.search}`,
+            );
           }
         }}
       />

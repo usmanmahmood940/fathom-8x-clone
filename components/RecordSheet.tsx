@@ -91,8 +91,8 @@ export function RecordSheet({
               Capture a meeting
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Zoom/Meet/Teams bot is stubbed. Pick a mode, then we’ll show the
-              processing state reviewers expect.
+              Zoom/Meet/Teams bot is stubbed. Any mode shows processing, then
+              opens the seeded Engineering Standup — nothing is recorded.
             </p>
             <div className="mt-4 space-y-2">
               {MODES.map((m) => (

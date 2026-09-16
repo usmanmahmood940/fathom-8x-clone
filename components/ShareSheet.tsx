@@ -60,6 +60,11 @@ export function ShareSheet({
           </button>
         </div>
 
+        <p className="mb-4 rounded-xl border border-yellow/20 bg-yellow/5 px-3 py-2 text-[11px] text-muted">
+          Demo: the copied URL is always public. Visibility and permission
+          below are labels only — they do not lock the meeting.
+        </p>
+
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted">
           Visibility
         </p>
@@ -122,7 +127,7 @@ export function ShareSheet({
           Copy link
         </button>
         <p className="mt-3 text-[11px] text-muted">
-          Demo-only permissions. Anyone with the live URL can open this meeting.
+          Anyone with this URL can open the meeting. No auth in this demo.
         </p>
       </div>
     </div>

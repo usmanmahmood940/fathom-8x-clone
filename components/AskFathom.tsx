@@ -23,8 +23,9 @@ export function AskFathom({
 
   return (
     <div className="mt-2 rounded-2xl border border-white/10 bg-black/40 p-3">
-      <div className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-wide text-cyan">
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold tracking-wide text-cyan">
         <span aria-hidden>✦</span> ASK FATHOM
+        <span className="font-normal text-muted">Local search · no LLM</span>
       </div>
       <form
         onSubmit={(e) => {
@@ -53,8 +54,7 @@ export function AskFathom({
       </div>
       {hits && hits.length === 0 && (
         <p className="mt-3 text-xs text-muted">
-          No overlap in this transcript. Try a prompt above — retrieval is
-          local, no LLM.
+          No overlap in this transcript. Try Ask Fathom with a prompt above.
         </p>
       )}
       {hits && hits.length > 0 && (
