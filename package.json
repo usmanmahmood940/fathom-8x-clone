@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "build:pages": "NEXT_PUBLIC_BASE_PATH=/fathom-8x-clone next build",
+    "deploy:pages": "npm run build:pages && npx --yes gh-pages -d out -t true -m \"Web : Chore : publish static export to GitHub Pages\"",
     "start": "next start",
     "lint": "eslint"
   },

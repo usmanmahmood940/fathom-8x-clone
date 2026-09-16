@@ -71,7 +71,14 @@ Static export (`output: "export"`). No env vars required for the demo.
 npm run build:pages
 ```
 
-`public/.nojekyll` is copied into `out/` so GitHub’s Jekyll does not hide `_next/`. Live: [usmanmahmood940.github.io/fathom-8x-clone](https://usmanmahmood940.github.io/fathom-8x-clone/).
+`public/.nojekyll` is copied into `out/` so GitHub’s Jekyll does not hide `_next/`. A GitHub Action (`.github/workflows/pages.yml`) deploys `out/` on every push to `main`. Manual:
+
+```bash
+git push origin main
+# or: npm run deploy:pages
+```
+
+Live: [usmanmahmood940.github.io/fathom-8x-clone](https://usmanmahmood940.github.io/fathom-8x-clone/).
 
 **Vercel** (empty `basePath`):
 
