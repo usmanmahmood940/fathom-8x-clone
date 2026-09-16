@@ -87,10 +87,6 @@ npm run build
 
 Import the GitHub repo in Vercel, or `npx vercel --prod`. Framework: Next.js. Build: `npm run build`. Output: `out`.
 
-## Walkthrough
-
-Camera-on script: [WALKTHROUGH.md](WALKTHROUGH.md).
-
 ## Project notes
 
 - Keep `CAPTURE-TEST.md`, `.agent-logs/`, and `.cursor/hooks` intact (assignment capture harness).
